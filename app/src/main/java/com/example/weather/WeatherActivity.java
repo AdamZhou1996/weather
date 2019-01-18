@@ -58,12 +58,13 @@ public class WeatherActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //判断当前版本是否是android 5.0以上，则执行背景图片交融
         if(Build.VERSION.SDK_INT>=21){
             View decorView=getWindow().getDecorView();
             decorView.setSystemUiVisibility(
                     View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_STABLE
             );
-            getWindow().setStatusBarColor(Color.TRANSPARENT);
+            getWindow().setStatusBarColor(Color.TRANSPARENT); //透明色
         }
         setContentView(R.layout.activity_weather);
         weatherLayout=(ScrollView)findViewById(R.id.weather_layout);
@@ -83,7 +84,7 @@ public class WeatherActivity extends AppCompatActivity {
         drawerLayout =(DrawerLayout)findViewById(R.id.drawer_layout);
         navButton =(Button)findViewById(R.id.nav_button);
         swipeRefresh.setColorSchemeResources(R.color.colorPrimary);
-
+        //所有初始化
 
         SharedPreferences prefs= PreferenceManager.getDefaultSharedPreferences(this);
         String weatherString = prefs.getString("weather",null);
@@ -94,10 +95,12 @@ public class WeatherActivity extends AppCompatActivity {
             showWeatherInfo(weather);
         }else{
             //无缓存时去服务器查询天气
-            mWeatherId=getIntent().getStringExtra("weather_id");
+            mWeatherId=getIntent().getStringExtra("weather_id");//从intent中取得id
             weatherLayout.setVisibility(View.INVISIBLE);//请求数据的时候先将ScrollView隐藏 否者空数据的界面看上去很奇怪
             requestWeather(mWeatherId);
         }
+
+        //更新方法
         swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
@@ -105,6 +108,7 @@ public class WeatherActivity extends AppCompatActivity {
             }
         });
 
+        //从SharedPreferences中读取缓存图片，若存在则直接调用Glide加载图片，如果没有调用LoadBingPic（）获取
         String bingPic=prefs.getString("bing_pic",null);
         if(bingPic!=null){
             Glide.with(this).load(bingPic).into(bingPicImg);//如果有缓存直接加载这张图片
@@ -121,6 +125,7 @@ public class WeatherActivity extends AppCompatActivity {
     /*
      * 根据天气id请求城市天气信息
      * */
+
     public void requestWeather(final String weatherId){//传入天气id
         final String weatherUrl="http://guolin.tech/api/weather?cityid="+weatherId+"&key=5dd51f969671494795cd0d0c3539c128";
         HttpUtil.sendOkHttpRequest(weatherUrl, new Callback() {
@@ -134,7 +139,7 @@ public class WeatherActivity extends AppCompatActivity {
                     public void run() {//切回主线程进行判断
                         if(weather!=null&&"ok".equals(weather.status)){//如果status为OK说明成功了 服务器会返回json格式
                             SharedPreferences.Editor editor=PreferenceManager.getDefaultSharedPreferences(WeatherActivity.this)
-                                    .edit();
+                                    .edit();    //添加缓存
                             editor.putString("weather",responseText);
                             editor.apply();
                             mWeatherId =weather.basic.weatherId;
@@ -159,7 +164,7 @@ public class WeatherActivity extends AppCompatActivity {
                 });
             }
         });
-       loadBingPic();
+       loadBingPic(); //每次请求天气的时候再重新刷新背景图片
     }
     /*
      * 加载必应每日一图
@@ -171,13 +176,14 @@ public class WeatherActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call call, Response response)throws IOException {
                 final String bingPic=response.body().string();
+
                 SharedPreferences.Editor editor=PreferenceManager.
                         getDefaultSharedPreferences(WeatherActivity.this).edit();//将链接缓存到SharedPreferences中
                 editor.putString("bing_pic",bingPic);
                 editor.apply();
                 runOnUiThread(new Runnable() {
                     @Override
-                    public void run() {//回到主线程加载背景图
+                    public void run() {//回到主线程，利用Glide加载图片
                         Glide.with(WeatherActivity.this).load(bingPic).into(bingPicImg);
                     }
                 });
@@ -194,6 +200,7 @@ public class WeatherActivity extends AppCompatActivity {
      * */
 
     private void showWeatherInfo(Weather weather){
+        //now和title数据
         String cityName=weather.basic.cityName;
         String updateTime=weather.basic.update.updateTime.split(" ")[1];
         String degree=weather.now.tmperature+"℃";
@@ -202,6 +209,8 @@ public class WeatherActivity extends AppCompatActivity {
         titleUpdateTime.setText(updateTime);
         degreeText.setText(degree);
         weatherInfoText.setText(weatherInfo);
+
+        //forecast数据
         forecastLayout.removeAllViews();
         for(Forecast forecast:weather.forecastList){
             View view = LayoutInflater.from(this).inflate(R.layout.forecast_item,forecastLayout,false);
@@ -209,17 +218,21 @@ public class WeatherActivity extends AppCompatActivity {
             TextView infoText=(TextView)view.findViewById(R.id.info_text);
             TextView maxText=(TextView)view.findViewById(R.id.max_text);
             TextView minText=(TextView)view.findViewById(R.id.min_text);
+
             dateText.setText(forecast.date);
             infoText.setText(forecast.more.info);
             maxText.setText(forecast.temperature.max);
             minText.setText(forecast.temperature.min);
+
             forecastLayout.addView(view);
         }
+        //aqi数据
         if(weather.aqi!=null){
             aqiText.setText(weather.aqi.city.aqi);
             pm25Text.setText(weather.aqi.city.pm25);
         }
 
+        //suggerstion数据
         String comfort="舒适度："+weather.suggestion.comfort.info;
         String carWash="洗车指数："+weather.suggestion.carWash.info;
         String sport="运动指数："+weather.suggestion.sport.info;
@@ -227,7 +240,7 @@ public class WeatherActivity extends AppCompatActivity {
         carWashText.setText(carWash);
         sportText.setText(sport);
         weatherLayout.setVisibility(View.VISIBLE);
-
+        //激活服务
         Intent intent=new Intent(this, AutoUpdateService.class);
         startService(intent);
     }

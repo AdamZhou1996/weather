@@ -8,7 +8,7 @@
 
     <list>
         <mapping class="com.example.weather.db.Province"/>
-        <mapping class="com.example.weather.db.City"/>
+      <mapping class="com.example.weather.db.City"/>
         <mapping class="com.example.weather.db.County"/>
     </list>
 
